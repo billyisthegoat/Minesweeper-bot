@@ -12,6 +12,8 @@ top_right = (0,0)
 bottom_left = (0,0)
 bottom_right = (0,0)
 
+already_clicked = set()
+
 def take_screenshot():
     # Find the application window by title
     windows = Desktop(backend="uia").windows(title_re=".*Minesweeper Online")  # Adjust the title pattern
@@ -147,6 +149,9 @@ def reset_if_dead():
 # grid
 def right_click(row,col):
     global actions_taken
+    global already_clicked
+    if (row,col) in already_clicked:
+        return
     # 0,0 = +16, +16 (mid)
     # 1,1 = +16+35, +16+35
     # 2,0 = +16, +16 + 70
@@ -155,10 +160,14 @@ def right_click(row,col):
     pyautogui.moveTo(x, y, duration=0)  # Move mouse with a slight delay
     pyautogui.rightClick()  # Perform left-click
     actions_taken += 1
+    already_clicked.add((row,col))
 
 
 def left_click(row,col):
     global actions_taken
+    global already_clicked
+    if (row,col) in already_clicked:
+        return
     # 0,0 = +16, +16 (mid)
     # 1,1 = +16+35, +16+35
     # 2,0 = +16, +16 + 70
@@ -167,6 +176,7 @@ def left_click(row,col):
     pyautogui.moveTo(x, y, duration=0)  # Move mouse with a slight delay
     pyautogui.leftClick()  # Perform left-click
     actions_taken += 1
+    already_clicked.add((row,col))
     
 # take_screenshot()
 # template_matching()
@@ -320,15 +330,18 @@ def select_safe_in_grid():
                         # grid[row][col] = -1
                         # print(small_grid)
                         left_click(col, row)
-            # elif value == 9 and unknowns and number_unknowns_flags == :
-            #     print(f'flip this as center: {i} col: {j} v: {value}')
-            #     for direction in directions:
-            #         row = i + direction[0]
-            #         col = j + direction[1]
-            #         if grid[row][col] == 9:
-            #             # grid[row][col] = -1
-            #             # print(small_grid)
-            #             left_click(col, row)
+            # If there's a flag in middle and there's a one and there's an unknown every click around 1 should be safe.
+            elif value == -1 and unknowns:
+                # find the one first
+                for direction in directions:
+                    row = i + direction[0]
+                    col = j + direction[1]
+                    if grid[row][col] == 1:
+                        for one_direction in directions:
+                            one_row = row + one_direction[0]
+                            one_col = col + one_direction[1]
+                            if 0 < one_row < 15 and 0 < one_col < 15 and grid[one_row][one_col] == 9:
+                                left_click(one_col, one_row)
 while actions_taken != 0:
     actions_taken = 0
     read_grid()
