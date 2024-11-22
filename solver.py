@@ -150,6 +150,16 @@ def right_click(row,col):
     y = top_left[1] + 16 + 35*col
     pyautogui.moveTo(x, y, duration=0)  # Move mouse with a slight delay
     pyautogui.rightClick()  # Perform left-click
+
+
+def left_click(row,col):
+    # 0,0 = +16, +16 (mid)
+    # 1,1 = +16+35, +16+35
+    # 2,0 = +16, +16 + 70
+    x = top_left[0] + 16 + 35*row
+    y = top_left[1] + 16 + 35*col
+    pyautogui.moveTo(x, y, duration=0)  # Move mouse with a slight delay
+    pyautogui.leftClick()  # Perform left-click
     
 # take_screenshot()
 # template_matching()
@@ -201,7 +211,8 @@ def get_value(threshold=0.9):
         ("4.png", 4),
         ("5.png", 5),
         ("none.png", 0),
-        ("unknown.png", 99),
+        ("unknown.png", 9),
+        ("flag.png", -1),
     ]:
         template = cv2.imread(f"resources/{image[0]}")
         screenshot = cv2.imread("box.png")
@@ -225,7 +236,7 @@ def get_value_cuda(threshold=0.9):
         ("4.png", 4),
         ("5.png", 5),
         ("none.png", 0),
-        ("unknown.png", 99),
+        ("unknown.png", 9),
     ]:
         screenshot = cv2.imread("box.png")
         template = cv2.imread(f"resources/{image[0]}")
@@ -250,67 +261,107 @@ def get_value_cuda(threshold=0.9):
         if max_val >= threshold:
             return image[1]
 
-# read_grid()
-grid = [
-        [99, 1, 0, 1, 99, 1, 0, 0, 0, 0, 1, 99, 99, 99, 99, 99], 
-        [1, 1, 0, 1, 99, 1, 0, 0, 0, 0, 1, 1, 1, 2, 99, 99], 
-        [0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 2, 99, 99], 
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 99, 99], 
-        [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 99, 99, 99, 99], 
-        [0, 0, 1, 1, 1, 0, 0, 0, 0, 1, 99, 99, 99, 99, 99, 99], 
-        [2, 2, 2, 99, 1, 0, 0, 0, 0, 1, 99, 99, 99, 99, 99, 99],
-        [99, 99, 99, 99, 2, 0, 0, 0, 0, 1, 99, 99, 99, 99, 99, 99],
-        [99, 99, 99, 99, 1, 0, 0, 0, 1, 2, 99, 99, 99, 99, 99, 99],
-        [99, 99, 99, 99, 2, 1, 0, 0, 1, 99, 99, 99, 99, 99, 99, 99],
-        [99, 99, 99, 99, 99, 1, 0, 0, 1, 1, 2, 99, 99, 99, 99, 99],
-        [99, 99, 99, 99, 99, 1, 0, 0, 0, 0, 1, 99, 99, 99, 99, 99],
-        [99, 99, 99, 99, 99, 1, 2, 2, 2, 2, 3, 99, 99, 99, 99, 99],
-        [99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99],
-        [99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99],
-        [99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99, 99]
-    ]
-print(grid)
-for i in range(1,14):
-    for j in range(1,14):
-        # [99,1,0]
-        # [1,1,0]
-        # [0,0,0]
-        if grid[i-1][j-1] == 99:
-            if grid[i][j] == 1 and grid[i][j-1] == 1 and grid[i-1][j] == 1:
-                if grid[i-1][j+1] == 0 and grid[i][j+1] == 0 and grid[i+1][j+1] == 0 and grid[i+1][j] == 0 and grid[i+1][j+1] == 0:
-                    print(grid[i][j])
-                    grid[i-1][j-1] = 'f'
-                    right_click(j-1,i-1)
-        # [0,1,99]
-        # [0,1,1]
-        # [0,0,0]
-        if grid[i-1][j+1] == 99:
-            if grid[i][j] == 1 and grid[i-1][j] == 1 and grid[i][j+1] == 1:
-                    if grid[i-1][j-1] == 0 and grid[i][j-1] == 0 and grid[i+1][j-1] == 0 and grid[i+1][j] == 0 and grid[i+1][j+1] == 0:
-                        print(grid[i][j])
-                        grid[i-1][j+1] = 'f'
-                        right_click(j+1,i-1)
-        # [0,0,0]
-        # [1,1,0]
-        # [99,1,0]
-        if grid[i+1][j-1] == 99:
-            if grid[i][j-1] == 1 and grid[i][j] == 1 and grid[i+1][j] == 1:
-                    if grid[i-1][j-1] == 0 and grid[i-1][j] == 0 and grid[i-1][j+1] == 0 and grid[i][j+1] == 0 and grid[i+1][j+1] == 0:
-                        print(grid[i][j])
-                        grid[i+1][j-1] = 'f'
-                        right_click(j-1,i+1)
-        # [1,0,0]
-        # [2,1,0]
-        # [99,1,0]         
-        if grid[i+1][j-1] == 99:
-            if grid[i][j] == 1 and grid[i+1][j] == 1:
-                    if grid[i-1][j] == 0 and grid[i-1][j+1] == 0 and grid[i][j+1] == 0 and grid[i+1][j+1] == 0:
-                        print(grid[i][j])
-                        grid[i+1][j-1] = 'f'
-                        right_click(j-1,i+1)
-                    
+read_grid()
+# grid = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], [9, 9, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0], [9, 9, 1, 0, 1, 1, 1, 1, 9, 2, 1, 1, 0, 0, 0, 0], [9, 9, 1, 0, 1, 9, 9, 9, 9, 3, 9, 2, 1, 1, 1, 1], [9, 9, 2, 1, 2, 9, 1, 9, 9, 9, 9, 9, 9, 9, 9, 9], [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9], [9, 9, 9, 9, 9, 9, 9, 9, 9, 1, 9, 9, 9, 9, 9, 9], [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9], [9, 9, 9, 2, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9], [9, 9, 9, 9, 9, 9, 9, 9, 9, 3, 9, 9, 9, 9, 9, 9], [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9], [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9], [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9], [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9], [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9]]
+# always find the center
+# grid = [[1, 1, 1, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9], 
+#         [1, 1, 1, 9, 9, 9, 9, 9, 9, 9, 3, 9, 9, 9, 9, 9], 
+#         [1, 2, 9, 2, 1, 2, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9], 
+#         [9, 9, 9, 1, 0, 1, 2, 9, 9, 9, 9, 9, 9, 9, 9, 9], 
+#         [9, 9, 9, 2, 1, 0, 1, 9, 9, 9, 9, 9, 9, 9, 9, 9],
+#         [9, 9, 9, 9, 2, 0, 1, 1, 2, 2, 3, 2, 1, 2, 9, 9], 
+#         [9, 9, 9, 9, 3, 0, 0, 0, 0, 0, 0, 0, 0, 1, 9, 9], 
+#         [9, 9, 9, 9, 2, 0, 0, 0, 0, 1, 1, 2, 1, 2, 1, 1],
+#         [9, 9, 9, 9, 1, 0, 0, 0, 1, 3, 9, 3, 9, 1, 0, 0],
+#         [9, 9, 9, 9, 1, 2, 1, 1, 2, 9, 9, 4, 1, 1, 0, 0],
+#         [9, 9, 9, 9, 9, 9, 9, 9, 4, 9, 9, 3, 1, 0, 1, 1],
+#         [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 1, 0, 1, 9],
+#         [9, 9, 9, 9, 9, 9, 9, 9, 9, 2, 2, 1, 1, 0, 1, 1], 
+#         [9, 9, 9, 9, 9, 9, 9, 9, 9, 1, 0, 0, 0, 0, 0, 0], 
+#         [9, 9, 9, 9, 9, 9, 1, 1, 1, 1, 0, 0, 1, 1, 1, 0], 
+#         [9, 9, 9, 9, 9, 9, 1, 0, 0, 0, 0, 0, 1, 9, 1, 0]]
+# always find the center
+directions = [
+    [-1,-1],[-1,0],[-1,1],
+    [0,-1],[0,1],
+    [1,-1],[1,0],[1,1]              
+]
+
+def mark_flags_in_grid():
+    # print(grid)
+    for i in range(1,15):
+        for j in range(1,15):
+            # if n is center, n is unknown, and the rest are not unknown, mark unknown as bomb
+            # [9,1,0]
+            # [1,1,0]
+            # [0,0,0]
+            known = set()
+            unknown = set()
+            value = grid[i][j]
+            print(f'Checking row: {i} col: {j} v: {value}')
+
+            small_grid = [
+                [grid[i-1][j-1],    grid[i-1][j],   grid[i-1][j+1]],
+                [grid[i][j-1],      grid[i][j],     grid[i][j+1]],
+                [grid[i+1][j-1],    grid[i+1][j],   grid[i+1][j+1]],
+            ]
+            flat = []
+            flat.extend(small_grid[0])
+            flat.extend(small_grid[1])
+            flat.extend(small_grid[2])
+            number_unknowns = flat.count(9)
+            number_unknowns_flags = flat.count(-1)
+            no_unknowns = number_unknowns_flags + number_unknowns
             
+            if value in [1,2,3,4,5] and value == no_unknowns:
+                for direction in directions:
+                    row = i + direction[0]
+                    col = j + direction[1]
+                    if grid[row][col] == 9:
+                        grid[row][col] = -1
+                        print(small_grid)
+                        right_click(col, row)
+                        
+def select_safe_in_grid():
+    # print(grid)
+    for i in range(1,15):
+        for j in range(1,15):
+            # if n is center, n is unknown, and the rest are not unknown, mark unknown as bomb
+            value = grid[i][j]
+            print(f'Checking row: {i} col: {j} v: {value}')
 
-
-
-    
+            small_grid = [
+                [grid[i-1][j-1],    grid[i-1][j],   grid[i-1][j+1]],
+                [grid[i][j-1],      grid[i][j],     grid[i][j+1]],
+                [grid[i+1][j-1],    grid[i+1][j],   grid[i+1][j+1]],
+            ]
+            flat = []
+            flat.extend(small_grid[0])
+            flat.extend(small_grid[1])
+            flat.extend(small_grid[2])
+            number_unknowns_flags = flat.count(-1)
+            unknowns = flat.count(9)
+            
+            if value in [1,2,3,4,5] and value == number_unknowns_flags and unknowns:
+                print(f'flip this as center: {i} col: {j} v: {value}')
+                for direction in directions:
+                    row = i + direction[0]
+                    col = j + direction[1]
+                    if grid[row][col] == 9:
+                        # grid[row][col] = -1
+                        # print(small_grid)
+                        left_click(col, row)
+            # elif value == 9 and unknowns and number_unknowns_flags == :
+            #     print(f'flip this as center: {i} col: {j} v: {value}')
+            #     for direction in directions:
+            #         row = i + direction[0]
+            #         col = j + direction[1]
+            #         if grid[row][col] == 9:
+            #             # grid[row][col] = -1
+            #             # print(small_grid)
+            #             left_click(col, row)
+                        
+while True:
+    read_grid()
+    mark_flags_in_grid()
+    select_safe_in_grid()
