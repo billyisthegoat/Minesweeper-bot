@@ -7,7 +7,9 @@ import cv2
 import numpy as np
 from pynput import mouse
 actions_taken = 1
-no_boxes = 16
+no_boxes_rows = 16
+no_boxes_cols = 16
+
 
 top_left = (0,0)
 
@@ -87,8 +89,8 @@ def right_click(row,col):
     # 0,0 = +16, +16 (mid)
     # 1,1 = +16+35, +16+35
     # 2,0 = +16, +16 + 70
-    x = top_left[0] + no_boxes + 35*row
-    y = top_left[1] + no_boxes + 35*col
+    x = top_left[0] + no_boxes_cols + 35*row
+    y = top_left[1] + no_boxes_rows + 35*col
     pyautogui.moveTo(x, y, duration=0)  # Move mouse with a slight delay
     pyautogui.rightClick()  # Perform left-click
     actions_taken += 1
@@ -103,22 +105,22 @@ def left_click(row,col):
     # 0,0 = +16, +16 (mid)
     # 1,1 = +16+35, +16+35
     # 2,0 = +16, +16 + 70
-    x = top_left[0] + no_boxes + 35*row
-    y = top_left[1] + no_boxes + 35*col
+    x = top_left[0] + no_boxes_cols + 35*row
+    y = top_left[1] + no_boxes_rows + 35*col
     pyautogui.moveTo(x, y, duration=0)  # Move mouse with a slight delay
     pyautogui.leftClick()  # Perform left-click
     actions_taken += 1
     already_clicked.add((row,col))
     
 # reset_if_dead()
-grid = [[0] * no_boxes for _ in range(no_boxes)]
+grid = [[0] * no_boxes_cols for _ in range(no_boxes_rows)]
 
 def read_grid():
     start_time = time.time()  # Record start time
 
     # Capture the entire grid in one screenshot
-    grid_width = no_boxes * 35
-    grid_height = no_boxes * 35
+    grid_width = no_boxes_cols * 35
+    grid_height = no_boxes_rows * 35
     region = (top_left[0], top_left[1], grid_width, grid_height)
     full_screenshot = pyautogui.screenshot(region=region)
     full_screenshot_np = np.array(full_screenshot)
@@ -136,7 +138,7 @@ def read_grid():
 
     # Precompute slicing coordinates
     slices = [(i, j, full_screenshot_bgr[35*i:35*(i+1), 35*j:35*(j+1)])
-              for i in range(no_boxes) for j in range(no_boxes)]
+              for i in range(no_boxes_rows) for j in range(no_boxes_cols)]
 
     # Use parallel processing to get values
     def process_slice(data):
@@ -165,6 +167,7 @@ def get_value(new_image):
         ("3.png", 3),
         ("4.png", 4),
         ("5.png", 5),
+        ("6.png", 6),
         ("none.png", 0),
         ("unknown.png", 9),
         ("flag.png", -1),
@@ -199,8 +202,8 @@ directions = [
 
 def mark_flags_in_grid():
     # print(grid)
-    for i in range(1,no_boxes-1):
-        for j in range(1,no_boxes-1):
+    for i in range(1,no_boxes_rows-1):
+        for j in range(1,no_boxes_cols-1):
             value = grid[i][j]
             print(f'Checking row: {i} col: {j} v: {value}')
 
@@ -217,7 +220,7 @@ def mark_flags_in_grid():
             number_unknowns_flags = flat.count(-1)
             no_unknowns = number_unknowns_flags + number_unknowns
             
-            if value in [1,2,3,4,5] and value == no_unknowns:
+            if value in [1,2,3,4,5] and value == no_unknowns and value != number_unknowns_flags:
                 for direction in directions:
                     row = i + direction[0]
                     col = j + direction[1]
@@ -229,10 +232,10 @@ def mark_flags_in_grid():
 def click_on_random_unknown():
     print("At this point I'm randomly clicking because I found guessing cases. Remove this call if you don't want.")
     should_break = False
-    for i in range(1,no_boxes-1):
+    for i in range(1,no_boxes_rows-1):
         if should_break:
             break
-        for j in range(1,no_boxes-1):
+        for j in range(1,no_boxes_cols-1):
             # if n is center, n is unknown, and the rest are not unknown, mark unknown as bomb
             value = grid[i][j]
             if value == 9:
@@ -242,8 +245,8 @@ def click_on_random_unknown():
                 
 def select_safe_in_grid():
     # print(grid)
-    for i in range(1,no_boxes-1):
-        for j in range(1,no_boxes-1):
+    for i in range(1,no_boxes_rows-1):
+        for j in range(1,no_boxes_cols-1):
             # if n is center, n is unknown, and the rest are not unknown, mark unknown as bomb
             value = grid[i][j]
             print(f'Checking row: {i} col: {j} v: {value}')
@@ -260,7 +263,7 @@ def select_safe_in_grid():
             number_unknowns_flags = flat.count(-1)
             unknowns = flat.count(9)
             
-            if value in [1,2,3,4,5] and value == number_unknowns_flags and unknowns:
+            if value in [1,2,3,4,5] and value == (number_unknowns_flags) and unknowns:
                 print(f'flip this as center: {i} col: {j} v: {value}')
                 for direction in directions:
                     row = i + direction[0]
@@ -279,7 +282,7 @@ def select_safe_in_grid():
                         for one_direction in directions:
                             one_row = row + one_direction[0]
                             one_col = col + one_direction[1]
-                            if 0 < one_row < 15 and 0 < one_col < 15 and (grid[one_row][one_col] == 9 or grid[one_row][one_col] == -1):
+                            if 0 < one_row < no_boxes_rows-1 and 0 < one_col < no_boxes_cols and (grid[one_row][one_col] == 9 or grid[one_row][one_col] == -1):
                                 left_click(one_col, one_row)
                         
 
@@ -300,7 +303,7 @@ while tries > 0:
         actions_taken = 0
         read_grid()
         mark_flags_in_grid()
-        read_grid()
+        # read_grid()
         select_safe_in_grid()
     tries -= 1
     # click_on_random_unknown()
