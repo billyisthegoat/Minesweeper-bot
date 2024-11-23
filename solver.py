@@ -3,10 +3,12 @@ import random
 import threading
 import time
 import pyautogui
-from pywinauto import Desktop
 import cv2
 import numpy as np
 from pynput import mouse
+import keyboard
+import sys
+
 actions_taken = 1
 no_boxes_rows = 16
 no_boxes_cols = 16
@@ -19,30 +21,12 @@ already_clicked = set()
 
 def mouse_click(x, y):
     print(f"Detected region center: ({x}, {y})")
-    # Simulate mouse click at the center of the detected region
     pyautogui.moveTo(x, y, duration=0)  # Move mouse with a slight delay
     pyautogui.click()  # Perform left-click
     
 def mouse_move(x, y):
-    # Simulate mouse click at the center of the detected region
     pyautogui.moveTo(x, y, duration=0)  # Move mouse with a slight delay
     
-# def mouse_click_random():
-#     global top_left
-#     print(top_left[0], top_left[1])
-#     for i in range(5):
-#         x_init = top_left[0] + 17.5
-#         x_end = top_left[0] + 560 - 17.5
-#         y_start = top_left[1] + 17.5
-#         y_end = top_left[1] + 560 - 17.5
-        
-#         x = random_between(x_init, x_end)
-#         y = random_between(y_start, y_end)
-#         print(x,y)
-#         pyautogui.moveTo(x,y, duration=0)
-#         pyautogui.click()
-#         reset_if_dead()
-   
 def random_between(a, b):
     # Ensure a is the smaller number and b is the larger number
     if a > b:
@@ -237,20 +221,6 @@ def mark_flags_in_grid_threaded():
 
     for thread in threads:
         thread.join()
-        
-def click_on_random_unknown():
-    print("At this point I'm randomly clicking because I found guessing cases. Remove this call if you don't want.")
-    should_break = False
-    for i in range(1,no_boxes_rows-1):
-        if should_break:
-            break
-        for j in range(1,no_boxes_cols-1):
-            # if n is center, n is unknown, and the rest are not unknown, mark unknown as bomb
-            value = grid[i][j]
-            if value == 9:
-                left_click(j,i)
-                should_break = True
-                break
                 
 def select_safe_in_grid():
     # print(grid)
@@ -273,7 +243,7 @@ def select_safe_in_grid():
             unknowns = flat.count(9)
             
             if value in [1,2,3,4,5] and value == (number_unknowns_flags) and unknowns:
-                print(f'flip this as center: {i} col: {j} v: {value}')
+                # print(f'flip this as center: {i} col: {j} v: {value}')
                 for direction in directions:
                     row = i + direction[0]
                     col = j + direction[1]
@@ -300,18 +270,24 @@ def on_click(x, y, button, pressed):
         top_left = (x,y)
         print(f"Mouse clicked at ({x}, {y})")
         return False  # Stop listener after first click
-
-print("Click anywhere on the screen to capture the coordinates...")
-with mouse.Listener(on_click=on_click) as listener:
-    listener.join()
     
-
-while actions_taken != 0:
-    actions_taken = 0
-    read_grid()
-    mark_flags_in_grid_threaded()
-    # read_grid()
-    select_safe_in_grid()
-# click_on_random_unknown()
-print("Either it finished or it reached those odd edge cases. I'm not going to spend time to fix them.")
-    
+def main():
+    global actions_taken
+    try:
+        # Listen for Esc key in a separate thread
+        keyboard.add_hotkey('esc', lambda: sys.exit())
+        print("Click anywhere on the screen to capture the coordinates... ESC key to kill program or keyboard interrupt.")
+        with mouse.Listener(on_click=on_click) as listener:
+            listener.join()
+        
+        while actions_taken != 0:
+            actions_taken = 0
+            read_grid()
+            mark_flags_in_grid_threaded()
+            select_safe_in_grid()
+        print("Either it finished or it reached those odd edge cases. I'm not going to spend time to fix them.")
+    except KeyboardInterrupt:
+        print("\nProgram interrupted.")
+        sys.exit()
+        
+main()
