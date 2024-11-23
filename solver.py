@@ -5,37 +5,14 @@ import pyautogui
 from pywinauto import Desktop
 import cv2
 import numpy as np
+from pynput import mouse
 actions_taken = 1
+no_boxes = 16
 
-top_left = (610,450)
-top_right = (0,0)
-bottom_left = (0,0)
-bottom_right = (0,0)
+top_left = (0,0)
 
 already_clicked = set()
 
-def take_screenshot():
-    # Find the application window by title
-    windows = Desktop(backend="uia").windows(title_re=".*Minesweeper Online")  # Adjust the title pattern
-    if windows:
-        app_window = windows[0]
-
-        # Get window coordinates
-        rect = app_window.rectangle()
-        region = (rect.left, rect.top, rect.width(), rect.height())
-        # Take a screenshot of the application window
-        screenshot = pyautogui.screenshot(region=region)
-
-        # Convert to NumPy array and OpenCV format
-        screenshot_np = np.array(screenshot)
-        screenshot_bgr = cv2.cvtColor(screenshot_np, cv2.COLOR_RGB2BGR)
-
-        # Display and save the screenshot
-        # cv2.imshow("Application Screenshot", screenshot_bgr)
-        cv2.imwrite("screenshot.png", screenshot_bgr)
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
-        
 def mouse_click(x, y):
     print(f"Detected region center: ({x}, {y})")
     # Simulate mouse click at the center of the detected region
@@ -46,22 +23,21 @@ def mouse_move(x, y):
     # Simulate mouse click at the center of the detected region
     pyautogui.moveTo(x, y, duration=0)  # Move mouse with a slight delay
     
-def mouse_click_random():
-    global top_left
-    print(top_left[0], top_left[1])
-    for i in range(5):
-        x_init = top_left[0] + 17.5
-        x_end = top_left[0] + 560 - 17.5
-        y_start = top_left[1] + 17.5
-        y_end = top_left[1] + 560 - 17.5
+# def mouse_click_random():
+#     global top_left
+#     print(top_left[0], top_left[1])
+#     for i in range(5):
+#         x_init = top_left[0] + 17.5
+#         x_end = top_left[0] + 560 - 17.5
+#         y_start = top_left[1] + 17.5
+#         y_end = top_left[1] + 560 - 17.5
         
-        x = random_between(x_init, x_end)
-        y = random_between(y_start, y_end)
-        print(x,y)
-        pyautogui.moveTo(x,y, duration=0)
-        pyautogui.click()
-        take_screenshot()
-        reset_if_dead()
+#         x = random_between(x_init, x_end)
+#         y = random_between(y_start, y_end)
+#         print(x,y)
+#         pyautogui.moveTo(x,y, duration=0)
+#         pyautogui.click()
+#         reset_if_dead()
    
 def random_between(a, b):
     # Ensure a is the smaller number and b is the larger number
@@ -72,50 +48,6 @@ def random_between(a, b):
     # Generate a random integer between a and b (inclusive)
     return random.randint(a, b) 
         
-def template_matching():
-    global top_left
-    screenshot = cv2.imread("screenshot.png", cv2.IMREAD_GRAYSCALE)
-    template = cv2.imread("template_intermediate.png", cv2.IMREAD_GRAYSCALE)
-
-    if screenshot is None or template is None:
-        print("Error: Could not load the screenshot or template. Please check the file paths.")
-    else:
-        # Perform template matching
-        result = cv2.matchTemplate(screenshot, template, cv2.TM_CCOEFF_NORMED)
-
-        # Get the best match position
-        min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
-
-        # Extract the top-left corner of the matching region
-        # top_left = max_loc
-        print(f"maxloc {max_loc}")
-        h, w = template.shape  # Template dimensions
-        bottom_right = (top_left[0] + w, top_left[1] + h)
-
-        # Draw a rectangle around the detected area
-        screenshot_with_box = cv2.cvtColor(screenshot, cv2.COLOR_GRAY2BGR)
-        cv2.rectangle(screenshot_with_box, top_left, bottom_right, (0, 255, 0), 2)
-        # top_left = (top_left[0] + 18, top_left[1] + 114)
-        print(f"Top left: {top_left}")
-        bottom_right = (top_left[0] + 18 + 560, top_left[1] + 114 + 560)
-        
-        mouse_click_random()
-        # Crop the detected region
-        cropped_region = screenshot[top_left[1]:bottom_right[1], top_left[0]:bottom_right[0]]
-
-        # Calculate width and height
-        width = bottom_right[0] - top_left[0]
-        height = bottom_right[1] - top_left[1]
-        print(f'{height} x {width}')
-
-        # Show the results
-        # cv2.imshow("Detected Template", screenshot_with_box)
-        # cv2.imshow("Cropped Region", cropped_region)
-        cv2.imwrite("detected_template.png", screenshot_with_box)
-        cv2.imwrite("cropped_region.png", cropped_region)
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
-
 def reset_if_dead():
     screenshot = cv2.imread("screenshot.png", cv2.IMREAD_GRAYSCALE)
     template = cv2.imread("unhappy.png", cv2.IMREAD_GRAYSCALE)
@@ -155,8 +87,8 @@ def right_click(row,col):
     # 0,0 = +16, +16 (mid)
     # 1,1 = +16+35, +16+35
     # 2,0 = +16, +16 + 70
-    x = top_left[0] + 16 + 35*row
-    y = top_left[1] + 16 + 35*col
+    x = top_left[0] + no_boxes + 35*row
+    y = top_left[1] + no_boxes + 35*col
     pyautogui.moveTo(x, y, duration=0)  # Move mouse with a slight delay
     pyautogui.rightClick()  # Perform left-click
     actions_taken += 1
@@ -171,54 +103,40 @@ def left_click(row,col):
     # 0,0 = +16, +16 (mid)
     # 1,1 = +16+35, +16+35
     # 2,0 = +16, +16 + 70
-    x = top_left[0] + 16 + 35*row
-    y = top_left[1] + 16 + 35*col
+    x = top_left[0] + no_boxes + 35*row
+    y = top_left[1] + no_boxes + 35*col
     pyautogui.moveTo(x, y, duration=0)  # Move mouse with a slight delay
     pyautogui.leftClick()  # Perform left-click
     actions_taken += 1
     already_clicked.add((row,col))
     
-# take_screenshot()
-# template_matching()
 # reset_if_dead()
-grid = [[0] * 16 for _ in range(16)]
+grid = [[0] * no_boxes for _ in range(no_boxes)]
 
-# def read_values():
-#     coordinates = top_left
-#     mid_point = 
-    
-def take_single_box(x,y):
-    # Get window coordinates
-    region = (x-10,y-10,35,35)
-    # Take a screenshot of the application window
-    screenshot = pyautogui.screenshot(region=region)
-
-    # Convert to NumPy array and OpenCV format
-    screenshot_np = np.array(screenshot)
-    screenshot_bgr = cv2.cvtColor(screenshot_np, cv2.COLOR_RGB2BGR)
-
-    # Display and save the screenshot
-    # cv2.imshow("Application Screenshot", screenshot_bgr)
-    cv2.imwrite("box.png", screenshot_bgr)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-    
 def read_grid():
     start_time = time.time()  # Record start time
 
     # Capture the entire grid in one screenshot
-    grid_width = 16 * 35
-    grid_height = 16 * 35
-    region = (top_left[0] - 8, top_left[1] - 8, grid_width, grid_height)
+    grid_width = no_boxes * 35
+    grid_height = no_boxes * 35
+    region = (top_left[0], top_left[1], grid_width, grid_height)
     full_screenshot = pyautogui.screenshot(region=region)
-
-    # Convert to NumPy array and OpenCV format
     full_screenshot_np = np.array(full_screenshot)
     full_screenshot_bgr = cv2.cvtColor(full_screenshot_np, cv2.COLOR_RGB2BGR)
+    
+    # # Display the screenshot using OpenCV
+    # cv2.imshow("Screenshot", full_screenshot_bgr)
+
+    # # Save the screenshot if needed
+    # cv2.imwrite("screenshot.png", full_screenshot_bgr)
+
+    # # Wait for a key press and close the OpenCV window
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
     # Precompute slicing coordinates
     slices = [(i, j, full_screenshot_bgr[35*i:35*(i+1), 35*j:35*(j+1)])
-              for i in range(16) for j in range(16)]
+              for i in range(no_boxes) for j in range(no_boxes)]
 
     # Use parallel processing to get values
     def process_slice(data):
@@ -241,7 +159,6 @@ def read_grid():
     print(f"Execution time: {elapsed_time:.6f} seconds")
 
 def get_value(new_image):
-    
     for image in [
         ("1.png", 1),
         ("2.png", 2),
@@ -270,6 +187,8 @@ def get_value(new_image):
                 print("Found some bombs! Ooops. Time to cry 🥲")
                 exit(1)
             else:
+                if image[1] == None:
+                    exit(1)
                 return image[1]
 
 directions = [
@@ -280,8 +199,8 @@ directions = [
 
 def mark_flags_in_grid():
     # print(grid)
-    for i in range(1,15):
-        for j in range(1,15):
+    for i in range(1,no_boxes-1):
+        for j in range(1,no_boxes-1):
             value = grid[i][j]
             print(f'Checking row: {i} col: {j} v: {value}')
 
@@ -310,10 +229,10 @@ def mark_flags_in_grid():
 def click_on_random_unknown():
     print("At this point I'm randomly clicking because I found guessing cases. Remove this call if you don't want.")
     should_break = False
-    for i in range(1,15):
+    for i in range(1,no_boxes-1):
         if should_break:
             break
-        for j in range(1,15):
+        for j in range(1,no_boxes-1):
             # if n is center, n is unknown, and the rest are not unknown, mark unknown as bomb
             value = grid[i][j]
             if value == 9:
@@ -323,8 +242,8 @@ def click_on_random_unknown():
                 
 def select_safe_in_grid():
     # print(grid)
-    for i in range(1,15):
-        for j in range(1,15):
+    for i in range(1,no_boxes-1):
+        for j in range(1,no_boxes-1):
             # if n is center, n is unknown, and the rest are not unknown, mark unknown as bomb
             value = grid[i][j]
             print(f'Checking row: {i} col: {j} v: {value}')
@@ -360,16 +279,30 @@ def select_safe_in_grid():
                         for one_direction in directions:
                             one_row = row + one_direction[0]
                             one_col = col + one_direction[1]
-                            if 0 < one_row < 15 and 0 < one_col < 15 and grid[one_row][one_col] == 9:
+                            if 0 < one_row < 15 and 0 < one_col < 15 and (grid[one_row][one_col] == 9 or grid[one_row][one_col] == -1):
                                 left_click(one_col, one_row)
                         
-tries = 10
+
+def on_click(x, y, button, pressed):
+    global top_left
+    if pressed:
+        top_left = (x,y)
+        print(f"Mouse clicked at ({x}, {y})")
+        return False  # Stop listener after first click
+
+print("Click anywhere on the screen to capture the coordinates...")
+with mouse.Listener(on_click=on_click) as listener:
+    listener.join()
+    
+tries = 5
 while tries > 0:
     while actions_taken != 0:
         actions_taken = 0
         read_grid()
         mark_flags_in_grid()
+        read_grid()
         select_safe_in_grid()
     tries -= 1
     # click_on_random_unknown()
     print("Either it finished or it reached those odd edge cases. I'm not going to spend time to fix them.")
+    

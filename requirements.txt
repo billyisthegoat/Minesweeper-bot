@@ -3,4 +3,4 @@ opencv-contrib-python
 pyautogui
 pygetwindow
 pywinauto
-cv2
+pynput
