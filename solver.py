@@ -8,16 +8,15 @@ import numpy as np
 from pynput import mouse
 import keyboard
 import sys
+from image_recognition import find_template_top_left
 
-actions_taken = 1
-no_boxes_rows = 16
-no_boxes_cols = 16
+HAS_THERE_BEEN_AN_ACTION = True
+NUMBER_OF_ROWS = 16
+NUMBER_OF_COLS = 16
 # no_boxes_cols = 30
 
-
-top_left = (0,0)
-
-already_clicked = set()
+top_left = find_template_top_left()
+ALREADY_VISITED = set()
 
 def mouse_click(x, y):
     print(f"Detected region center: ({x}, {y})")
@@ -50,7 +49,7 @@ def reset_if_dead():
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
 
         # Extract the top-left corner of the matching region
-        top_left = max_loc
+        top_left = find_template_top_left()
         h, w = template.shape  # Template dimensions
         bottom_right = (top_left[0] + w, top_left[1] + h)
 
@@ -67,39 +66,39 @@ def reset_if_dead():
         return False
 
 def right_click(row,col):
-    global actions_taken
-    global already_clicked
-    if (row,col) in already_clicked:
+    global HAS_THERE_BEEN_AN_ACTION
+    global ALREADY_VISITED
+    if (row,col) in ALREADY_VISITED:
         return
-    x = top_left[0] + no_boxes_cols + 35*row
-    y = top_left[1] + no_boxes_rows + 35*col
+    x = top_left[0] + NUMBER_OF_COLS + 35*row
+    y = top_left[1] + NUMBER_OF_ROWS + 35*col
     pyautogui.moveTo(x, y, duration=0)
     pyautogui.rightClick()  # Perform left-click
-    actions_taken += 1
-    already_clicked.add((row,col))
+    HAS_THERE_BEEN_AN_ACTION = True
+    ALREADY_VISITED.add((row,col))
 
 
 def left_click(row,col):
-    global actions_taken
-    global already_clicked
-    if (row,col) in already_clicked:
+    global HAS_THERE_BEEN_AN_ACTION
+    global ALREADY_VISITED
+    if (row,col) in ALREADY_VISITED:
         return
-    x = top_left[0] + no_boxes_cols + 35*row
-    y = top_left[1] + no_boxes_rows + 35*col
+    x = top_left[0] + NUMBER_OF_COLS + 35*row
+    y = top_left[1] + NUMBER_OF_ROWS + 35*col
     pyautogui.moveTo(x, y, duration=0)
     pyautogui.leftClick()
-    actions_taken += 1
-    already_clicked.add((row,col))
+    HAS_THERE_BEEN_AN_ACTION = True
+    ALREADY_VISITED.add((row,col))
     
 # reset_if_dead()
-grid = [[0] * no_boxes_cols for _ in range(no_boxes_rows)]
+grid = [[0] * NUMBER_OF_COLS for _ in range(NUMBER_OF_ROWS)]
 
 def read_grid():
     start_time = time.time()  # Record start time
 
     # Capture the entire grid in one screenshot
-    grid_width = no_boxes_cols * 35
-    grid_height = no_boxes_rows * 35
+    grid_width = NUMBER_OF_COLS * 35
+    grid_height = NUMBER_OF_ROWS * 35
     region = (top_left[0], top_left[1], grid_width, grid_height)
     full_screenshot = pyautogui.screenshot(region=region)
     full_screenshot_np = np.array(full_screenshot)
@@ -117,7 +116,7 @@ def read_grid():
 
     # Precompute slicing coordinates
     slices = [(i, j, full_screenshot_bgr[35*i:35*(i+1), 35*j:35*(j+1)])
-              for i in range(no_boxes_rows) for j in range(no_boxes_cols)]
+              for i in range(NUMBER_OF_ROWS) for j in range(NUMBER_OF_COLS)]
 
     # Use parallel processing to get values
     def process_slice(data):
@@ -182,7 +181,7 @@ directions = [
 
 def process_chunk(start_row, end_row):
     for i in range(start_row, end_row):
-        for j in range(1, no_boxes_cols - 1):
+        for j in range(1, NUMBER_OF_COLS - 1):
             value = grid[i][j]
             # print(f'Checking row: {i} col: {j} v: {value}')
 
@@ -207,14 +206,14 @@ def process_chunk(start_row, end_row):
 
 def mark_flags_in_grid_threaded():
     num_threads = 20  # Adjust based on your CPU core count
-    chunk_size = (no_boxes_rows - 2) // num_threads
+    chunk_size = (NUMBER_OF_ROWS - 2) // num_threads
     threads = []
 
     for t in range(num_threads):
         start_row = 1 + t * chunk_size
         end_row = start_row + chunk_size
         if t == num_threads - 1:  # Last chunk includes the remaining rows
-            end_row = no_boxes_rows - 1
+            end_row = NUMBER_OF_ROWS - 1
         thread = threading.Thread(target=process_chunk, args=(start_row, end_row))
         threads.append(thread)
         thread.start()
@@ -224,11 +223,11 @@ def mark_flags_in_grid_threaded():
                 
 def select_safe_in_grid():
     # print(grid)
-    for i in range(1,no_boxes_rows-1):
-        for j in range(1,no_boxes_cols-1):
+    for i in range(1,NUMBER_OF_ROWS-1):
+        for j in range(1,NUMBER_OF_COLS-1):
             # if n is center, n is unknown, and the rest are not unknown, mark unknown as bomb
             value = grid[i][j]
-            print(f'Checking row: {i} col: {j} v: {value}')
+            # print(f'Checking row: {i} col: {j} v: {value}')
 
             small_grid = [
                 [grid[i-1][j-1],    grid[i-1][j],   grid[i-1][j+1]],
@@ -261,27 +260,19 @@ def select_safe_in_grid():
                         for one_direction in directions:
                             one_row = row + one_direction[0]
                             one_col = col + one_direction[1]
-                            if 0 < one_row < no_boxes_rows and 0 < one_col < no_boxes_cols and (grid[one_row][one_col] == 9 or grid[one_row][one_col] == -1):
+                            if 0 < one_row < NUMBER_OF_ROWS and 0 < one_col < NUMBER_OF_COLS and (grid[one_row][one_col] == 9 or grid[one_row][one_col] == -1):
                                 left_click(one_col, one_row)
 
-def on_click(x, y, button, pressed):
-    global top_left
-    if pressed:
-        top_left = (x,y)
-        print(f"Mouse clicked at ({x}, {y})")
-        return False  # Stop listener after first click
-    
+
 def main():
-    global actions_taken
+    global HAS_THERE_BEEN_AN_ACTION
     try:
         # Listen for Esc key in a separate thread
         keyboard.add_hotkey('esc', lambda: sys.exit())
-        print("Click anywhere on the screen to capture the coordinates... ESC key to kill program or keyboard interrupt.")
-        with mouse.Listener(on_click=on_click) as listener:
-            listener.join()
+        print("ESC key to kill program or keyboard interrupt.")
         
-        while actions_taken != 0:
-            actions_taken = 0
+        while HAS_THERE_BEEN_AN_ACTION:
+            HAS_THERE_BEEN_AN_ACTION = False
             read_grid()
             mark_flags_in_grid_threaded()
             select_safe_in_grid()
