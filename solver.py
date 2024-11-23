@@ -251,6 +251,8 @@ def get_value(new_image):
         ("none.png", 0),
         ("unknown.png", 9),
         ("flag.png", -1),
+        ("blackbomb.png", -1000),
+        ("redbomb.png", -1000),
     ]:
         template = cv2.imread(f"resources/{image[0]}")
         image_umat = cv2.UMat(new_image)
@@ -264,7 +266,11 @@ def get_value(new_image):
         # If the max value is above the threshold, it's considered a match
         threshold = 0.9
         if max_val >= threshold:
-            return image[1]
+            if image[1] == -1000:
+                print("Found some bombs! Ooops. Time to cry 🥲")
+                exit(1)
+            else:
+                return image[1]
 
 directions = [
     [-1,-1],[-1,0],[-1,1],
@@ -301,6 +307,20 @@ def mark_flags_in_grid():
                         print(small_grid)
                         right_click(col, row)
                         
+def click_on_random_unknown():
+    print("At this point I'm randomly clicking because I found guessing cases. Remove this call if you don't want.")
+    should_break = False
+    for i in range(1,15):
+        if should_break:
+            break
+        for j in range(1,15):
+            # if n is center, n is unknown, and the rest are not unknown, mark unknown as bomb
+            value = grid[i][j]
+            if value == 9:
+                left_click(j,i)
+                should_break = True
+                break
+                
 def select_safe_in_grid():
     # print(grid)
     for i in range(1,15):
@@ -342,8 +362,14 @@ def select_safe_in_grid():
                             one_col = col + one_direction[1]
                             if 0 < one_row < 15 and 0 < one_col < 15 and grid[one_row][one_col] == 9:
                                 left_click(one_col, one_row)
-while actions_taken != 0:
-    actions_taken = 0
-    read_grid()
-    mark_flags_in_grid()
-    select_safe_in_grid()
+                        
+tries = 10
+while tries > 0:
+    while actions_taken != 0:
+        actions_taken = 0
+        read_grid()
+        mark_flags_in_grid()
+        select_safe_in_grid()
+    tries -= 1
+    # click_on_random_unknown()
+    print("Either it finished or it reached those odd edge cases. I'm not going to spend time to fix them.")
