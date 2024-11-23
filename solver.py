@@ -1,5 +1,6 @@
 from concurrent.futures import ThreadPoolExecutor
 import random
+import threading
 import time
 import pyautogui
 from pywinauto import Desktop
@@ -9,6 +10,7 @@ from pynput import mouse
 actions_taken = 1
 no_boxes_rows = 16
 no_boxes_cols = 16
+# no_boxes_cols = 30
 
 
 top_left = (0,0)
@@ -80,18 +82,14 @@ def reset_if_dead():
             return True
         return False
 
-# grid
 def right_click(row,col):
     global actions_taken
     global already_clicked
     if (row,col) in already_clicked:
         return
-    # 0,0 = +16, +16 (mid)
-    # 1,1 = +16+35, +16+35
-    # 2,0 = +16, +16 + 70
     x = top_left[0] + no_boxes_cols + 35*row
     y = top_left[1] + no_boxes_rows + 35*col
-    pyautogui.moveTo(x, y, duration=0)  # Move mouse with a slight delay
+    pyautogui.moveTo(x, y, duration=0)
     pyautogui.rightClick()  # Perform left-click
     actions_taken += 1
     already_clicked.add((row,col))
@@ -102,13 +100,10 @@ def left_click(row,col):
     global already_clicked
     if (row,col) in already_clicked:
         return
-    # 0,0 = +16, +16 (mid)
-    # 1,1 = +16+35, +16+35
-    # 2,0 = +16, +16 + 70
     x = top_left[0] + no_boxes_cols + 35*row
     y = top_left[1] + no_boxes_rows + 35*col
-    pyautogui.moveTo(x, y, duration=0)  # Move mouse with a slight delay
-    pyautogui.leftClick()  # Perform left-click
+    pyautogui.moveTo(x, y, duration=0)
+    pyautogui.leftClick()
     actions_taken += 1
     already_clicked.add((row,col))
     
@@ -200,27 +195,24 @@ directions = [
     [1,-1],[1,0],[1,1]              
 ]
 
-def mark_flags_in_grid():
-    # print(grid)
-    for i in range(1,no_boxes_rows-1):
-        for j in range(1,no_boxes_cols-1):
+
+def process_chunk(start_row, end_row):
+    for i in range(start_row, end_row):
+        for j in range(1, no_boxes_cols - 1):
             value = grid[i][j]
-            print(f'Checking row: {i} col: {j} v: {value}')
+            # print(f'Checking row: {i} col: {j} v: {value}')
 
             small_grid = [
-                [grid[i-1][j-1],    grid[i-1][j],   grid[i-1][j+1]],
-                [grid[i][j-1],      grid[i][j],     grid[i][j+1]],
-                [grid[i+1][j-1],    grid[i+1][j],   grid[i+1][j+1]],
+                [grid[i - 1][j - 1], grid[i - 1][j], grid[i - 1][j + 1]],
+                [grid[i][j - 1], grid[i][j], grid[i][j + 1]],
+                [grid[i + 1][j - 1], grid[i + 1][j], grid[i + 1][j + 1]],
             ]
-            flat = []
-            flat.extend(small_grid[0])
-            flat.extend(small_grid[1])
-            flat.extend(small_grid[2])
+            flat = small_grid[0] + small_grid[1] + small_grid[2]
             number_unknowns = flat.count(9)
             number_unknowns_flags = flat.count(-1)
             no_unknowns = number_unknowns_flags + number_unknowns
-            
-            if value in [1,2,3,4,5] and value == no_unknowns and value != number_unknowns_flags:
+
+            if value in [1, 2, 3, 4, 5] and value == no_unknowns and value != number_unknowns_flags:
                 for direction in directions:
                     row = i + direction[0]
                     col = j + direction[1]
@@ -228,7 +220,24 @@ def mark_flags_in_grid():
                         grid[row][col] = -1
                         print(small_grid)
                         right_click(col, row)
-                        
+
+def mark_flags_in_grid_threaded():
+    num_threads = 20  # Adjust based on your CPU core count
+    chunk_size = (no_boxes_rows - 2) // num_threads
+    threads = []
+
+    for t in range(num_threads):
+        start_row = 1 + t * chunk_size
+        end_row = start_row + chunk_size
+        if t == num_threads - 1:  # Last chunk includes the remaining rows
+            end_row = no_boxes_rows - 1
+        thread = threading.Thread(target=process_chunk, args=(start_row, end_row))
+        threads.append(thread)
+        thread.start()
+
+    for thread in threads:
+        thread.join()
+        
 def click_on_random_unknown():
     print("At this point I'm randomly clicking because I found guessing cases. Remove this call if you don't want.")
     should_break = False
@@ -282,9 +291,8 @@ def select_safe_in_grid():
                         for one_direction in directions:
                             one_row = row + one_direction[0]
                             one_col = col + one_direction[1]
-                            if 0 < one_row < no_boxes_rows-1 and 0 < one_col < no_boxes_cols and (grid[one_row][one_col] == 9 or grid[one_row][one_col] == -1):
+                            if 0 < one_row < no_boxes_rows and 0 < one_col < no_boxes_cols and (grid[one_row][one_col] == 9 or grid[one_row][one_col] == -1):
                                 left_click(one_col, one_row)
-                        
 
 def on_click(x, y, button, pressed):
     global top_left
@@ -297,15 +305,13 @@ print("Click anywhere on the screen to capture the coordinates...")
 with mouse.Listener(on_click=on_click) as listener:
     listener.join()
     
-tries = 5
-while tries > 0:
-    while actions_taken != 0:
-        actions_taken = 0
-        read_grid()
-        mark_flags_in_grid()
-        # read_grid()
-        select_safe_in_grid()
-    tries -= 1
-    # click_on_random_unknown()
-    print("Either it finished or it reached those odd edge cases. I'm not going to spend time to fix them.")
+
+while actions_taken != 0:
+    actions_taken = 0
+    read_grid()
+    mark_flags_in_grid_threaded()
+    # read_grid()
+    select_safe_in_grid()
+# click_on_random_unknown()
+print("Either it finished or it reached those odd edge cases. I'm not going to spend time to fix them.")
     
