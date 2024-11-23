@@ -5,17 +5,19 @@ import time
 import pyautogui
 import cv2
 import numpy as np
-from pynput import mouse
 import keyboard
 import sys
-from image_recognition import find_template_top_left
+from image_recognition import find_template_top_intermediate, find_template_top_expert
 
 HAS_THERE_BEEN_AN_ACTION = True
 NUMBER_OF_ROWS = 16
 NUMBER_OF_COLS = 16
-# no_boxes_cols = 30
+top_left = find_template_top_intermediate()
 
-top_left = find_template_top_left()
+# uncomment this if you want to use it for expert mode, however, I won't have a template for it.
+# NUMBER_OF_COLS = 30
+# top_left = find_template_top_expert()
+
 ALREADY_VISITED = set()
 
 def mouse_click(x, y):
@@ -49,7 +51,7 @@ def reset_if_dead():
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
 
         # Extract the top-left corner of the matching region
-        top_left = find_template_top_left()
+        top_left = find_template_top_intermediate()
         h, w = template.shape  # Template dimensions
         bottom_right = (top_left[0] + w, top_left[1] + h)
 

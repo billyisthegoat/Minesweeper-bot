@@ -5,7 +5,7 @@ I made this tool for fun to try and see if it can solve minesweeper online <b>in
 It can auto set flags where the bombs are. <br/>
 It can click where the safe spots are. <br/>
 It cannot solve edge cases because I found it wasn't worth my time. <br />
-It cannot solve expert <br />
+It can run, but cannot solve expert, but there's edge cases not seen in intermediate. <br />
 
 <h2>Setup</h2>
 I highly recommend venv <br />
